@@ -2,12 +2,24 @@
 
 import sys
 
+HLT = 0b00000001
+LDI = 0b10000010
+PRN = 0b01000111
+
 class CPU:
     """Main CPU class."""
 
     def __init__(self):
         """Construct a new CPU."""
-        pass
+        self.memory = [0] * 32
+        self.r = [0] * 8
+        self.pc = 0
+
+    def ram_read(self, address):
+        return self.r[address]
+    
+    def ram_write(self, address, value):
+        self.r[address] = value
 
     def load(self):
         """Load a program into memory."""
@@ -27,18 +39,18 @@ class CPU:
         ]
 
         for instruction in program:
-            self.ram[address] = instruction
+            self.memory[address] = instruction
             address += 1
 
 
-    def alu(self, op, reg_a, reg_b):
-        """ALU operations."""
+    # def alu(self, op, reg_a, reg_b):
+    #     """ALU operations."""
 
-        if op == "ADD":
-            self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
-        else:
-            raise Exception("Unsupported ALU operation")
+    #     if op == "ADD":
+    #         self.reg[reg_a] += self.reg[reg_b]
+    #     #elif op == "SUB": etc
+    #     else:
+    #         raise Exception("Unsupported ALU operation")
 
     def trace(self):
         """
@@ -56,10 +68,22 @@ class CPU:
         ), end='')
 
         for i in range(8):
-            print(" %02X" % self.reg[i], end='')
+            print(" %02X" % self.r[i], end='')
 
         print()
 
     def run(self):
         """Run the CPU."""
-        pass
+        while True:
+            ir = self.memory[self.pc]
+            operand_a = self.memory[self.pc + 1]
+            operand_b = self.memory[self.pc + 2]
+            if ir == HLT:
+                break
+            elif ir == LDI:
+                self.r[operand_a] = operand_b
+                self.pc += 3
+            elif ir == PRN:
+                print(self.r[operand_a])
+                self.pc += 2
+            
