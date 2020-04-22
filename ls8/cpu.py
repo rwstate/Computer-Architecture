@@ -6,14 +6,18 @@ HLT = 0b00000001
 LDI = 0b10000010
 PRN = 0b01000111
 MUL = 0b10100010
+PSH = 0b01000101
+POP = 0b01000110
+SP = 7
 
 class CPU:
     """Main CPU class."""
 
     def __init__(self):
         """Construct a new CPU."""
-        self.memory = [0] * 32
+        self.memory = [0] * 256
         self.r = [0] * 8
+        self.r[7] = 0xF4
         self.pc = 0
 
     def ram_read(self, address):
@@ -89,4 +93,21 @@ class CPU:
             elif ir == MUL:
                 self.r[operand_a] = self.r[operand_a] * self.r[operand_b]
                 self.pc += 3
+            elif ir == PSH:
+                # decrement the stack pointer
+                self.r[SP] -= 1   # address_of_the_top_of_stack -= 1
+            
+                # copy value from register into memory
+                reg_num = self.memory[self.pc + 1]
+                value = self.r[reg_num]  # this is what we want to push
+            
+                address = self.r[SP]
+                self.memory[address] = value   # store the value on the stack
+                self.pc += 2
+            elif ir == POP:
+                reg_num = self.memory[self.pc + 1]
+                address = self.r[SP]
+                self.r[reg_num] = self.memory[address]
+                self.r[SP] += 1
+                self.pc += 2
             
