@@ -17,8 +17,50 @@ class CPU:
         """Construct a new CPU."""
         self.memory = [0] * 256
         self.r = [0] * 8
-        self.r[7] = 0xF4
+        self.r[SP] = 0xF4
         self.pc = 0
+        self.running = True
+        self.branchtable = {}
+        self.branchtable[HLT] = self.halt_func
+        self.branchtable[LDI] = self.ldi_func
+        self.branchtable[PRN] = self.prn_func
+        self.branchtable[MUL] = self.mult_func
+        self.branchtable[PSH] = self.psh_func
+        self.branchtable[POP] = self.pop_func
+
+    def halt_func(self):
+        self.running = False
+
+    def ldi_func(self):
+        self.r[self.memory[self.pc + 1]] = self.memory[self.pc + 2]
+        self.pc += 3
+
+    def prn_func(self):
+        print(self.r[self.memory[self.pc + 1]])
+        self.pc += 2
+    
+    def mult_func(self):
+        self.r[self.memory[self.pc + 1]] = self.r[self.memory[self.pc + 1]] * self.r[self.memory[self.pc + 2]]
+        self.pc += 3
+    
+    def psh_func(self):
+        # decrement the stack pointer
+        self.r[SP] -= 1   # address_of_the_top_of_stack -= 1
+    
+        # copy value from register into memory
+        reg_num = self.memory[self.pc + 1]
+        value = self.r[reg_num]  # this is what we want to push
+    
+        address = self.r[SP]
+        self.memory[address] = value   # store the value on the stack
+        self.pc += 2
+    
+    def pop_func(self):
+        reg_num = self.memory[self.pc + 1]
+        address = self.r[SP]
+        self.r[reg_num] = self.memory[address]
+        self.r[SP] += 1
+        self.pc += 2
 
     def ram_read(self, address):
         return self.r[address]
@@ -78,36 +120,39 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        while True:
+        while self.running:
             ir = self.memory[self.pc]
-            operand_a = self.memory[self.pc + 1]
-            operand_b = self.memory[self.pc + 2]
-            if ir == HLT:
-                break
-            elif ir == LDI:
-                self.r[operand_a] = operand_b
-                self.pc += 3
-            elif ir == PRN:
-                print(self.r[operand_a])
-                self.pc += 2
-            elif ir == MUL:
-                self.r[operand_a] = self.r[operand_a] * self.r[operand_b]
-                self.pc += 3
-            elif ir == PSH:
-                # decrement the stack pointer
-                self.r[SP] -= 1   # address_of_the_top_of_stack -= 1
+            self.branchtable[ir]()
+        # while True:
+        #     ir = self.memory[self.pc]
+        #     operand_a = self.memory[self.pc + 1]
+        #     operand_b = self.memory[self.pc + 2]
+        #     if ir == HLT:
+        #         break
+        #     elif ir == LDI:
+        #         self.r[operand_a] = operand_b
+        #         self.pc += 3
+        #     elif ir == PRN:
+        #         print(self.r[operand_a])
+        #         self.pc += 2
+        #     elif ir == MUL:
+        #         self.r[operand_a] = self.r[operand_a] * self.r[operand_b]
+        #         self.pc += 3
+        #     elif ir == PSH:
+        #         # decrement the stack pointer
+        #         self.r[SP] -= 1   # address_of_the_top_of_stack -= 1
             
-                # copy value from register into memory
-                reg_num = self.memory[self.pc + 1]
-                value = self.r[reg_num]  # this is what we want to push
+        #         # copy value from register into memory
+        #         reg_num = self.memory[self.pc + 1]
+        #         value = self.r[reg_num]  # this is what we want to push
             
-                address = self.r[SP]
-                self.memory[address] = value   # store the value on the stack
-                self.pc += 2
-            elif ir == POP:
-                reg_num = self.memory[self.pc + 1]
-                address = self.r[SP]
-                self.r[reg_num] = self.memory[address]
-                self.r[SP] += 1
-                self.pc += 2
+        #         address = self.r[SP]
+        #         self.memory[address] = value   # store the value on the stack
+        #         self.pc += 2
+        #     elif ir == POP:
+        #         reg_num = self.memory[self.pc + 1]
+        #         address = self.r[SP]
+        #         self.r[reg_num] = self.memory[address]
+        #         self.r[SP] += 1
+        #         self.pc += 2
             
