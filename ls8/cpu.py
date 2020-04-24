@@ -15,6 +15,7 @@ CMP = 0b10100111
 JMP = 0b01010100
 JEQ = 0b01010101
 JNE = 0b01010110
+ADDI = 0b11111111
 SP = 7
 
 class CPU:
@@ -42,6 +43,7 @@ class CPU:
         self.branchtable[JMP] = self.jmp_func
         self.branchtable[JEQ] = self.jeq_func
         self.branchtable[JNE] = self.jne_func
+        self.branchtable[ADDI] = self.addi_func
 
     def halt_func(self):
         self.running = False
@@ -133,6 +135,14 @@ class CPU:
             self.pc = dest_addr
         else:
             self.pc += 2
+    
+    def addi_func(self):
+        reg_num = self.memory[self.pc + 1]
+        value = self.memory[self.pc + 2]
+
+        self.r[reg_num] += value
+
+        self.pc += 3
 
     def ram_read(self, address):
         return self.r[address]
