@@ -2,12 +2,153 @@
 
 import sys
 
+HLT = 0b00000001
+LDI = 0b10000010
+PRN = 0b01000111
+MUL = 0b10100010
+PSH = 0b01000101
+POP = 0b01000110
+CALL = 0b01010000
+ADD = 0b10100000
+RET = 0b00010001
+CMP = 0b10100111
+JMP = 0b01010100
+JEQ = 0b01010101
+JNE = 0b01010110
+ADDI = 0b11111111
+SP = 7
+
 class CPU:
     """Main CPU class."""
 
     def __init__(self):
         """Construct a new CPU."""
-        pass
+        self.memory = [0] * 256
+        self.r = [0] * 8
+        self.r[SP] = 0xF4
+        self.pc = 0
+        self.running = True
+        self.fl = 0b00000000
+        self.branchtable = {}
+        self.branchtable[HLT] = self.halt_func
+        self.branchtable[LDI] = self.ldi_func
+        self.branchtable[PRN] = self.prn_func
+        self.branchtable[MUL] = self.mult_func
+        self.branchtable[PSH] = self.psh_func
+        self.branchtable[POP] = self.pop_func
+        self.branchtable[CALL] = self.call_func
+        self.branchtable[ADD] = self.add_func
+        self.branchtable[RET] = self.ret_func
+        self.branchtable[CMP] = self.cmp_func
+        self.branchtable[JMP] = self.jmp_func
+        self.branchtable[JEQ] = self.jeq_func
+        self.branchtable[JNE] = self.jne_func
+        self.branchtable[ADDI] = self.addi_func
+
+    def halt_func(self):
+        self.running = False
+
+    def ldi_func(self):
+        self.r[self.memory[self.pc + 1]] = self.memory[self.pc + 2]
+        self.pc += 3
+
+    def prn_func(self):
+        print(self.r[self.memory[self.pc + 1]])
+        self.pc += 2
+    
+    def mult_func(self):
+        self.r[self.memory[self.pc + 1]] = self.r[self.memory[self.pc + 1]] * self.r[self.memory[self.pc + 2]]
+        self.pc += 3
+    
+    def add_func(self):
+        self.r[self.memory[self.pc + 1]] = self.r[self.memory[self.pc + 1]] + self.r[self.memory[self.pc + 2]]
+        self.pc += 3
+
+    def psh_func(self):
+        # decrement the stack pointer
+        self.r[SP] -= 1   # address_of_the_top_of_stack -= 1
+    
+        # copy value from register into memory
+        reg_num = self.memory[self.pc + 1]
+        value = self.r[reg_num]  # this is what we want to push
+    
+        address = self.r[SP]
+        self.memory[address] = value   # store the value on the stack
+        self.pc += 2
+    
+    def pop_func(self):
+        reg_num = self.memory[self.pc + 1]
+        address = self.r[SP]
+        self.r[reg_num] = self.memory[address]
+        self.r[SP] += 1
+        self.pc += 2
+    
+    def call_func(self):
+        return_addr = self.pc + 2
+
+        self.r[SP] -= 1
+        self.memory[self.r[SP]] = return_addr
+
+        reg_num = self.memory[self.pc + 1]
+        dest_addr = self.r[reg_num]
+
+        self.pc = dest_addr
+
+    def ret_func(self):
+        return_addr = self.memory[self.r[SP]]
+        self.r[SP] += 1
+
+        self.pc = return_addr
+    
+    def cmp_func(self):
+        reg_a = self.r[self.memory[self.pc + 1]]
+        reg_b = self.r[self.memory[self.pc + 2]]
+
+        if reg_a < reg_b:
+            self.fl = 0b00000100
+        elif reg_a > reg_b:
+            self.fl = 0b00000010
+        else:
+            self.fl = 0b00000001
+        self.pc += 3
+    
+    def jmp_func(self):
+        reg_num = self.memory[self.pc + 1]
+        dest_addr = self.r[reg_num]
+
+        self.pc = dest_addr
+    
+    def jeq_func(self):
+        reg_num = self.memory[self.pc + 1]
+        dest_addr = self.r[reg_num]
+
+        if self.fl == 0b00000001:
+            self.pc = dest_addr
+        else:
+            self.pc += 2
+
+    def jne_func(self):
+        reg_num = self.memory[self.pc + 1]
+        dest_addr = self.r[reg_num]
+
+        if self.fl != 0b00000001:
+            self.pc = dest_addr
+        else:
+            self.pc += 2
+    
+    def addi_func(self):
+        reg_num = self.memory[self.pc + 1]
+        value = self.memory[self.pc + 2]
+
+        self.r[reg_num] += value
+
+        self.pc += 3
+
+    def ram_read(self, address):
+        return self.r[address]
+    
+    def ram_write(self, address, value):
+        self.r[address] = value
 
     def load(self):
         """Load a program into memory."""
@@ -16,29 +157,28 @@ class CPU:
 
         # For now, we've just hardcoded a program:
 
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
-
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
+        with open(sys.argv[1]) as f:
+            for line in f:
+              line = line.split('#')
+              line = line[0].strip()
+          
+              if line == '':
+                continue
+          
+              self.memory[address] = int(line, 2)
+          
+              address += 1
 
 
-    def alu(self, op, reg_a, reg_b):
-        """ALU operations."""
 
-        if op == "ADD":
-            self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
-        else:
-            raise Exception("Unsupported ALU operation")
+    # def alu(self, op, reg_a, reg_b):
+    #     """ALU operations."""
+
+    #     if op == "ADD":
+    #         self.reg[reg_a] += self.reg[reg_b]
+    #     #elif op == "SUB": etc
+    #     else:
+    #         raise Exception("Unsupported ALU operation")
 
     def trace(self):
         """
@@ -56,10 +196,13 @@ class CPU:
         ), end='')
 
         for i in range(8):
-            print(" %02X" % self.reg[i], end='')
+            print(" %02X" % self.r[i], end='')
 
         print()
 
     def run(self):
         """Run the CPU."""
-        pass
+        while self.running:
+            ir = self.memory[self.pc]
+            self.branchtable[ir]()
+            
