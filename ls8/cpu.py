@@ -8,6 +8,13 @@ PRN = 0b01000111
 MUL = 0b10100010
 PSH = 0b01000101
 POP = 0b01000110
+CALL = 0b01010000
+ADD = 0b10100000
+RET = 0b00010001
+CMP = 0b10100111
+JMP = 0b01010100
+JEQ = 0b01010101
+JNE = 0b01010110
 SP = 7
 
 class CPU:
@@ -20,6 +27,7 @@ class CPU:
         self.r[SP] = 0xF4
         self.pc = 0
         self.running = True
+        self.fl = 0b00000000
         self.branchtable = {}
         self.branchtable[HLT] = self.halt_func
         self.branchtable[LDI] = self.ldi_func
@@ -27,6 +35,13 @@ class CPU:
         self.branchtable[MUL] = self.mult_func
         self.branchtable[PSH] = self.psh_func
         self.branchtable[POP] = self.pop_func
+        self.branchtable[CALL] = self.call_func
+        self.branchtable[ADD] = self.add_func
+        self.branchtable[RET] = self.ret_func
+        self.branchtable[CMP] = self.cmp_func
+        self.branchtable[JMP] = self.jmp_func
+        self.branchtable[JEQ] = self.jeq_func
+        self.branchtable[JNE] = self.jne_func
 
     def halt_func(self):
         self.running = False
@@ -43,6 +58,10 @@ class CPU:
         self.r[self.memory[self.pc + 1]] = self.r[self.memory[self.pc + 1]] * self.r[self.memory[self.pc + 2]]
         self.pc += 3
     
+    def add_func(self):
+        self.r[self.memory[self.pc + 1]] = self.r[self.memory[self.pc + 1]] + self.r[self.memory[self.pc + 2]]
+        self.pc += 3
+
     def psh_func(self):
         # decrement the stack pointer
         self.r[SP] -= 1   # address_of_the_top_of_stack -= 1
@@ -61,6 +80,59 @@ class CPU:
         self.r[reg_num] = self.memory[address]
         self.r[SP] += 1
         self.pc += 2
+    
+    def call_func(self):
+        return_addr = self.pc + 2
+
+        self.r[SP] -= 1
+        self.memory[self.r[SP]] = return_addr
+
+        reg_num = self.memory[self.pc + 1]
+        dest_addr = self.r[reg_num]
+
+        self.pc = dest_addr
+
+    def ret_func(self):
+        return_addr = self.memory[self.r[SP]]
+        self.r[SP] += 1
+
+        self.pc = return_addr
+    
+    def cmp_func(self):
+        reg_a = self.r[self.memory[self.pc + 1]]
+        reg_b = self.r[self.memory[self.pc + 2]]
+
+        if reg_a < reg_b:
+            self.fl = 0b00000100
+        elif reg_a > reg_b:
+            self.fl = 0b00000010
+        else:
+            self.fl = 0b00000001
+        self.pc += 3
+    
+    def jmp_func(self):
+        reg_num = self.memory[self.pc + 1]
+        dest_addr = self.r[reg_num]
+
+        self.pc = dest_addr
+    
+    def jeq_func(self):
+        reg_num = self.memory[self.pc + 1]
+        dest_addr = self.r[reg_num]
+
+        if self.fl == 0b00000001:
+            self.pc = dest_addr
+        else:
+            self.pc += 2
+
+    def jne_func(self):
+        reg_num = self.memory[self.pc + 1]
+        dest_addr = self.r[reg_num]
+
+        if self.fl != 0b00000001:
+            self.pc = dest_addr
+        else:
+            self.pc += 2
 
     def ram_read(self, address):
         return self.r[address]
@@ -123,36 +195,4 @@ class CPU:
         while self.running:
             ir = self.memory[self.pc]
             self.branchtable[ir]()
-        # while True:
-        #     ir = self.memory[self.pc]
-        #     operand_a = self.memory[self.pc + 1]
-        #     operand_b = self.memory[self.pc + 2]
-        #     if ir == HLT:
-        #         break
-        #     elif ir == LDI:
-        #         self.r[operand_a] = operand_b
-        #         self.pc += 3
-        #     elif ir == PRN:
-        #         print(self.r[operand_a])
-        #         self.pc += 2
-        #     elif ir == MUL:
-        #         self.r[operand_a] = self.r[operand_a] * self.r[operand_b]
-        #         self.pc += 3
-        #     elif ir == PSH:
-        #         # decrement the stack pointer
-        #         self.r[SP] -= 1   # address_of_the_top_of_stack -= 1
-            
-        #         # copy value from register into memory
-        #         reg_num = self.memory[self.pc + 1]
-        #         value = self.r[reg_num]  # this is what we want to push
-            
-        #         address = self.r[SP]
-        #         self.memory[address] = value   # store the value on the stack
-        #         self.pc += 2
-        #     elif ir == POP:
-        #         reg_num = self.memory[self.pc + 1]
-        #         address = self.r[SP]
-        #         self.r[reg_num] = self.memory[address]
-        #         self.r[SP] += 1
-        #         self.pc += 2
             
